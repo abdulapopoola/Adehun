@@ -8,6 +8,10 @@
 // then method
 //
 
+function runAsync(fn) {
+    setTimeout(fn, 0);
+}
+
 function isFunction(obj){
     return typeof obj === "function";
 }
@@ -47,7 +51,7 @@ var adehun = {
         REJECTED:2
     },
     queue : [],
-    transition: function(state, value){
+    transition: function(state, value) {
         if(this.state === state || 
            this.state !== validStates.PENDING ||
            !isValidState(state) ||
@@ -57,15 +61,17 @@ var adehun = {
 
         this.value = value;
         this.state = state;
-        this.resolvePromise();
+        this.process();
     },
-    then: function(onFulfilled, onRejected){
-        //fix then to follow promise/A+ 2.2 spec
-        //check if onFulfilled and onRejected are promises
-
+    then: function(onFulfilled, onRejected) {
         var queuedPromise = new Object.create(this);
-        queuedPromise.handlers.fulfill = onFulfilled;
-        queuedPromise.handlers.reject = onRejected;
+        if(isFunction(onFulfilled){
+            queuedPromise.handlers.fulfill = onFulfilled;
+        }
+
+        if(isFunction(onRejected){
+            queuedPromise.handlers.reject = onRejected;
+        }
 
         this.queue.push(queuedPromise);
 
@@ -80,12 +86,29 @@ var adehun = {
     reject: function(reason) {
         this.transition(validStates.REJECTED, value);
     },
-    resolvePromise: function(){
+    process: function() {
         if(this.state === validStates.PENDING){
             return;
         }
 
-        //if value is promise, do right thing
-        //if not, go through list of queued promises and resolve them all
+        while(this.queue.length) {
+            var queuedPromise = this.queue.shift();       
+            var handler = null;
+
+            if(this.state === validStates.FULFILLED) {
+                var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
+            } else if (this.state === validStates.REJECTED) {
+                var handler = queuedPromise.handlers.reject || function (value) { throw value; };
+            }
+
+            try {
+                var value = handler(this.value);
+            } catch (e) {
+                queuedPromise.transition(validStates.REJECTED, e);
+                continue; 
+            }
+
+            Resolve(queuedPromise, value);
+        }
     }
 };
