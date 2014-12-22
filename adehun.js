@@ -16,21 +16,57 @@ function isFunction(obj){
     return typeof obj === "function";
 }
 
-function sameObjectReference(obj1, obj2){
-    return false;
+function isObject(obj){
+    return typeof obj === "object";
 }
 
 function isPromise(obj){
-    return false;
+    throw new Error("Unimplemented");
 }
 
-function Resolve(promise, x){ 
-    if(sameObjectReference(promise, x){
-        return new TypeError("The promise and its value refer to the same object");
-    }
+function Resolve(promise, x) {
+    if(promise === x){
+        promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
+    } else if(isPromise(x)) {
+        if(x.state === validStates.PENDING) {
+            x.then(function(value){
+                //why not resolve(promise, value)?
+                promise.fulfill(value);
+            }, function(reason){
+                promise.reject(reason);
+            });
+        } else {
+            promise.transition(x.state, x.value);
+        }
+    } else if (isObject(x) || isFunction(x)) {
+        var called = false;
+        try {
+            var thenHandler = x.then;        
 
-    if(isPromise(x)){
-        x.then(promise);
+            if(isFunction(thenHandler)) {
+                thenHandler.call(x,
+                        function (y) {
+                            if(!called) {
+                                Resolve(promise, y);
+                                called = true;
+                            }
+                        },
+                        function(r) {
+                            if(!called) {
+                                promise.reject(r);
+                                called = true;
+                            }
+                        });
+            } else {
+                promise.fulfill(x);
+            }
+        } catch (e) {
+            if(!called) {
+                promise.reject(e);
+            }
+        }
+    } else {
+        promise.fulfill(x);
     }
 }
 var adehun = {
@@ -84,7 +120,7 @@ var adehun = {
         this.transition(validStates.FULFILLED, value);
     },
     reject: function(reason) {
-        this.transition(validStates.REJECTED, value);
+        this.transition(validStates.REJECTED, reason);
     },
     process: function() {
         if(this.state === validStates.PENDING){
@@ -105,7 +141,7 @@ var adehun = {
                 var value = handler(this.value);
             } catch (e) {
                 queuedPromise.transition(validStates.REJECTED, e);
-                continue; 
+                continue;
             }
 
             Resolve(queuedPromise, value);
