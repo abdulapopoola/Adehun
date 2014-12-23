@@ -21,7 +21,7 @@ function isObject(obj){
 }
 
 function isPromise(obj){
-    throw new Error("Unimplemented");
+    return obj.constructor === "Promise";
 }
 
 function Resolve(promise, x) {
@@ -69,6 +69,7 @@ function Resolve(promise, x) {
         promise.fulfill(x);
     }
 }
+
 var adehun = {
     state: 0,
     value: null,
@@ -127,24 +128,71 @@ var adehun = {
             return;
         }
 
-        while(this.queue.length) {
-            var queuedPromise = this.queue.shift();       
-            var handler = null;
-
-            if(this.state === validStates.FULFILLED) {
-                var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
-            } else if (this.state === validStates.REJECTED) {
-                var handler = queuedPromise.handlers.reject || function (value) { throw value; };
+        runAsync(function () { 
+            while(this.queue.length) {
+                var queuedPromise = this.queue.shift();       
+                var handler = null;
+                
+                if(this.state === validStates.FULFILLED) {
+                    var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
+                } else if (this.state === validStates.REJECTED) {
+                    var handler = queuedPromise.handlers.reject || function (value) { throw value; };
+                }
+                
+                try {
+                    var value = handler(this.value);
+                } catch (e) {
+                    queuedPromise.transition(validStates.REJECTED, e);
+                    continue;
+                }
+                
+                Resolve(queuedPromise, value);
             }
+        });
+    }
+};
 
-            try {
-                var value = handler(this.value);
-            } catch (e) {
-                queuedPromise.transition(validStates.REJECTED, e);
-                continue;
-            }
+var Promise = function(fn) {
+    var that = this;
 
-            Resolve(queuedPromise, value);
-        }
+    this.state = validStates.PENDING;
+    this.queue = [];
+
+    if(fn) {
+        fn(function(value) {
+                Resolve(this, value);
+           },
+           function(reason) {
+                that.transition(validStates.REJECTED, reason);
+           });
+    }
+};
+
+Promise.prototype.transition = adehun.transition;
+Promise.prototype.process = adehun.process;
+Promise.prototype.then = adehun.then;
+
+module.exports = {
+    resolved: function (value) {
+        return new Promise(function (resolve) {
+            resolve(value);
+        });
+    },
+    rejected: function (reason) {
+        return new Promise(function (resolve, reject) {
+            reject(reason);
+        });
+    },
+    deferred: function () {
+        var resolve, reject;
+
+        return {
+            promise: new Promise(function(rslv, rjct){
+                resolve = rslv;
+                reject = rjct;
+            }),
+            resolve: resolve,
+            reject: reject
+        };
     }
 };
