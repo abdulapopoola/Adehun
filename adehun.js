@@ -106,8 +106,7 @@ var process = function() {
     }
 
     runAsync(function () { 
-        console.log(that);
-        while(that.queue && that.queue.length) {
+        while(that.queue.length) {
             var queuedPromise = that.queue.shift();       
             var handler = null;
 
