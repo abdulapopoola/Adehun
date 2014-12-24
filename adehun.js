@@ -12,7 +12,7 @@ function runAsync(fn) {
     setTimeout(fn, 0);
 }
 
-function isFunction(obj){
+function isFunction(obj) {
     return typeof obj === "function";
 }
 
@@ -21,7 +21,7 @@ function isObject(obj){
 }
 
 function isPromise(obj){
-    return obj.constructor === "Promise";
+    return obj && obj.constructor === "Promise";
 }
 
 function Resolve(promise, x) {
@@ -63,6 +63,7 @@ function Resolve(promise, x) {
         } catch (e) {
             if(!called) {
                 promise.reject(e);
+                called = true;
             }
         }
     } else {
@@ -70,107 +71,111 @@ function Resolve(promise, x) {
     }
 }
 
-var adehun = {
-    state: 0,
-    value: null,
-    handlers:{
-        fulfill: null,
-        reject: null
-    },
-    isValidState: function(state) {
-        return ((state === validStates.PENDING) || 
-                (state === validStates.REJECTED) ||
-                (state === validStates.FULFILLED));
-    },
-    validStates: {
-        PENDING:0,
-        FULFILLED:1,
-        REJECTED:2
-    },
-    queue : [],
-    transition: function(state, value) {
-        if(this.state === state || 
-           this.state !== validStates.PENDING ||
-           !isValidState(state) ||
-           arguments.length !== 2) {
-            return;
-        }
+var validStates = {
+    PENDING:0,
+    FULFILLED:1,
+    REJECTED:2
+};
 
-        this.value = value;
-        this.state = state;
-        this.process();
-    },
-    then: function(onFulfilled, onRejected) {
-        var queuedPromise = new Object.create(this);
-        if(isFunction(onFulfilled){
-            queuedPromise.handlers.fulfill = onFulfilled;
-        }
-
-        if(isFunction(onRejected){
-            queuedPromise.handlers.reject = onRejected;
-        }
-
-        this.queue.push(queuedPromise);
-
-        return queuedPromise;
-
-        //check if Object.create(adehun) is better
-        //return Object.create(this);
-    },
-    fulfill: function(value) {
-        this.transition(validStates.FULFILLED, value);
-    },
-    reject: function(reason) {
-        this.transition(validStates.REJECTED, reason);
-    },
-    process: function() {
-        if(this.state === validStates.PENDING){
-            return;
-        }
-
-        runAsync(function () { 
-            while(this.queue.length) {
-                var queuedPromise = this.queue.shift();       
-                var handler = null;
-                
-                if(this.state === validStates.FULFILLED) {
-                    var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
-                } else if (this.state === validStates.REJECTED) {
-                    var handler = queuedPromise.handlers.reject || function (value) { throw value; };
-                }
-                
-                try {
-                    var value = handler(this.value);
-                } catch (e) {
-                    queuedPromise.transition(validStates.REJECTED, e);
-                    continue;
-                }
-                
-                Resolve(queuedPromise, value);
-            }
-        });
+var then = function(onFulfilled, onRejected) {
+    var queuedPromise = new Promise();
+    if(isFunction(onFulfilled)){
+        queuedPromise.handlers.fulfill = onFulfilled;
     }
+
+    if(isFunction(onRejected)){
+        queuedPromise.handlers.reject = onRejected;
+    }
+
+    this.queue.push(queuedPromise);
+    this.process();
+
+    return queuedPromise;
+};
+
+var isValidState = function(state) {
+    return ((state === validStates.PENDING) || 
+            (state === validStates.REJECTED) ||
+            (state === validStates.FULFILLED));
+};
+
+var process = function() {
+    var that = this;
+    if(this.state === validStates.PENDING){
+        return;
+    }
+
+    runAsync(function () { 
+        console.log(that);
+        while(that.queue && that.queue.length) {
+            var queuedPromise = that.queue.shift();       
+            var handler = null;
+
+            if(that.state === validStates.FULFILLED) {
+                var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
+            } else if (that.state === validStates.REJECTED) {
+                var handler = queuedPromise.handlers.reject || function (value) { throw value; };
+            }
+
+            try {
+                var value = handler(that.value);
+            } catch (e) {
+                queuedPromise.transition(validStates.REJECTED, e);
+                continue;
+            }
+
+            Resolve(queuedPromise, value);
+        }
+    });
+};
+
+var transition = function(state, value) {
+    if(this.state === state ||
+       this.state !== validStates.PENDING ||
+       !isValidState(state) ||
+       arguments.length !== 2) {
+                return;
+            }
+
+    this.value = value;
+    this.state = state;
+    this.process();
+};
+
+var fulfill = function(value) {
+    this.transition(validStates.FULFILLED, value);
+};
+
+var reject = function(reason) {
+    this.transition(validStates.REJECTED, reason);
 };
 
 var Promise = function(fn) {
     var that = this;
 
+    this.value = null;
     this.state = validStates.PENDING;
     this.queue = [];
+    this.handlers = {
+        fulfill : null,
+        reject : null
+    };
 
     if(fn) {
         fn(function(value) {
-                Resolve(this, value);
-           },
-           function(reason) {
-                that.transition(validStates.REJECTED, reason);
-           });
+            Resolve(that, value);
+        },
+        function(reason) {
+            that.transition(validStates.REJECTED, reason);
+        });
     }
 };
 
-Promise.prototype.transition = adehun.transition;
-Promise.prototype.process = adehun.process;
-Promise.prototype.then = adehun.then;
+Promise.prototype.transition = transition;
+Promise.prototype.process = process;
+Promise.prototype.then = then;
+Promise.prototype.fulfill = fulfill;
+Promise.prototype.reject = reject;
 
 module.exports = {
     resolved: function (value) {
@@ -191,8 +196,8 @@ module.exports = {
                 resolve = rslv;
                 reject = rjct;
             }),
-            resolve: resolve,
-            reject: reject
+                resolve: resolve,
+                reject: reject
         };
     }
 };
