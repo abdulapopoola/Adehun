@@ -1,48 +1,37 @@
-// Use class and object init method to ensure that resolve is only on parent object
-// all children call static parent method
-// States constant - use closure?
-// TransitionState function
-// Allow handling of several thens
-// Use settimeout of 0 to push off event loop - guarantees async
-// Clone promises-tests and check
-// then method
-//
-
-function runAsync(fn) {
-    setTimeout(fn, 0);
-}
-
-function isFunction(obj) {
-    return typeof obj === "function";
-}
-
-function isObject(obj){
-    return typeof obj === "object";
-}
-
-function isPromise(obj){
-    return obj && obj.constructor === "Promise";
-}
+var Utils = {
+    runAsync: function(fn) {
+        setTimeout(fn, 0);
+    },
+    isFunction: function(val) {
+        return val && typeof val === "function";
+    },
+    isObject: function(val) {
+        return val && typeof val === "object";
+    },
+    isPromise: function(val) {
+        return val && val.constructor === "Promise";
+    }
+};
 
 function Resolve(promise, x) {
     if(promise === x){
         promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
-    } else if(isPromise(x)) {
+    } else if(Utils.isPromise(x)) {
         if(x.state === validStates.PENDING) {
             x.then(function(value){
-		promise.fulfil(value);
+                promise.fulfil(value);
             }, function(reason){
                 promise.reject(reason);
             });
         } else {
             promise.transition(x.state, x.value);
         }
-    } else if (x && (isObject(x) || isFunction(x))) {
+    } else if (Utils.isObject(x) || Utils.isFunction(x)) {
         var called = false;
         try {
             var thenHandler = x.then;        
 
-            if(isFunction(thenHandler)) {
+            if(Utils.isFunction(thenHandler)) {
                 thenHandler.call(x,
                         function (y) {
                             if(!called) {
@@ -79,11 +68,11 @@ var validStates = {
 
 var then = function(onFulfilled, onRejected) {
     var queuedPromise = new Promise();
-    if(isFunction(onFulfilled)){
+    if(Utils.isFunction(onFulfilled)){
         queuedPromise.handlers.fulfill = onFulfilled;
     }
 
-    if(isFunction(onRejected)){
+    if(Utils.isFunction(onRejected)){
         queuedPromise.handlers.reject = onRejected;
     }
 
@@ -105,7 +94,7 @@ var process = function() {
         return;
     }
 
-    runAsync(function () { 
+    Utils.runAsync(function () { 
         while(that.queue.length) {
             var queuedPromise = that.queue.shift();       
             var handler = null;
