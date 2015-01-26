@@ -1,0 +1,29 @@
+{
+  "name": "Adehun",
+  "version": "1.0.0",
+  "description": "Adehun is an extremely lightweight Promise/A+ implementation (about 166 LOC) and very useful for learning how to implement the Promise/A+ spec.",
+  "main": "adehun.js",
+  "scripts": {
+    "test": "node testrunner.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdulapopoola/Adehun"
+  },
+  "keywords": [
+    "promise",
+    "promises",
+    "promise/A+",
+    "adehun",
+    "adehunJS"
+  ],
+  "author": "AbdulFattah Popoola <abdulapopoola@outlook.com>",
+  "license": "MIT",
+  "devDependencies": {
+      "promises-aplus-tests": "~2"
+  },
+  "contributors": [{
+      "name": "AbdulFattah Popoola",
+      "web": "http://abdulapopoola.com"
+  }]
+}
