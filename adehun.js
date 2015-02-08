@@ -24,7 +24,7 @@ var Utils = {
         return val && typeof val === "object";
     },
     isPromise: function (val) {
-        return val && val.constructor === "Promise";
+        return val && val.constructor === Promise;
     }
 };
 
@@ -33,7 +33,11 @@ function Resolve(promise, x) {
         promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
     } else if (Utils.isPromise(x)) {
         if (x.state === validStates.PENDING) {
-            x.then(promise.fulfill, promise.reject);
+            x.then(function (val) {
+                Resolve(promise, val);
+            }, function (reason) {
+                promise.transition(validStates.REJECTED, reason);
+            });
         } else {
             promise.transition(x.state, x.value);
         }
@@ -161,7 +165,7 @@ var Promise = function (fn) {
         fn(function (value) {
             Resolve(that, value);
         }, function (reason) {
-            that.transition(validStates.REJECTED, reason);
+            that.reject(reason);
         });
     }
 };
