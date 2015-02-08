@@ -27,6 +27,21 @@ var Utils = {
     }
 };
 
+var then = function (onFulfilled, onRejected) {
+    var queuedPromise = new Adehun();
+    if (Utils.isFunction(onFulfilled)) {
+        queuedPromise.handlers.fulfill = onFulfilled;
+    }
+
+    if (Utils.isFunction(onRejected)) {
+        queuedPromise.handlers.reject = onRejected;
+    }
+
+    this.queue.push(queuedPromise);
+
+    return queuedPromise;
+};
+
 var transition = function (state, value) {
     if (this.state === state || 
             this.state !== validStates.PENDING ||
@@ -45,8 +60,8 @@ var process = function () {
         fulfillFallBack = function (value) {
             return value;
         },
-        rejectFallBack = function (value) {
-            throw value;
+        rejectFallBack = function (reason) {
+            throw reason;
         };    
 
     Utils.runAsync(function () { 
@@ -120,21 +135,6 @@ function Resolve(promise, x) {
         promise.fulfill(x);
     }
 }
-
-var then = function (onFulfilled, onRejected) {
-    var queuedPromise = new Adehun();
-    if (Utils.isFunction(onFulfilled)) {
-        queuedPromise.handlers.fulfill = onFulfilled;
-    }
-
-    if (Utils.isFunction(onRejected)) {
-        queuedPromise.handlers.reject = onRejected;
-    }
-
-    this.queue.push(queuedPromise);
-
-    return queuedPromise;
-};
 
 var fulfill = function (value) {
     this.transition(validStates.FULFILLED, value);
