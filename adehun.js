@@ -23,7 +23,7 @@ var Utils = {
         return val && typeof val === "object";
     },
     isPromise: function (val) {
-        return val && val.constructor === Promise;
+        return val && val.constructor === Adehun;
     }
 };
 
@@ -122,7 +122,7 @@ function Resolve(promise, x) {
 }
 
 var then = function (onFulfilled, onRejected) {
-    var queuedPromise = new Promise();
+    var queuedPromise = new Adehun();
     if (Utils.isFunction(onFulfilled)) {
         queuedPromise.handlers.fulfill = onFulfilled;
     }
@@ -144,7 +144,7 @@ var reject = function (reason) {
     this.transition(validStates.REJECTED, reason);
 };
 
-var Promise = function (fn) {
+var Adehun = function (fn) {
     var that = this;
 
     this.value = null;
@@ -164,20 +164,20 @@ var Promise = function (fn) {
     }
 };
 
-Promise.prototype.transition = transition;
-Promise.prototype.process = process;
-Promise.prototype.then = then;
-Promise.prototype.fulfill = fulfill;
-Promise.prototype.reject = reject;
+Adehun.prototype.transition = transition;
+Adehun.prototype.process = process;
+Adehun.prototype.then = then;
+Adehun.prototype.fulfill = fulfill;
+Adehun.prototype.reject = reject;
 
 module.exports = {
     resolved: function (value) {
-        return new Promise(function (resolve) {
+        return new Adehun(function (resolve) {
             resolve(value);
         });
     },
     rejected: function (reason) {
-        return new Promise(function (resolve, reject) {
+        return new Adehun(function (resolve, reject) {
             reject(reason);
         });
     },
@@ -185,7 +185,7 @@ module.exports = {
         var resolve, reject;
 
         return {
-            promise: new Promise(function (rslv, rjct) {
+            promise: new Adehun(function (rslv, rjct) {
                 resolve = rslv;
                 reject = rjct;
             }),
