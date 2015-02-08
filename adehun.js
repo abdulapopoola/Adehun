@@ -31,7 +31,7 @@ function Resolve(promise, x) {
     } else if(Utils.isPromise(x)) {
         if(x.state === validStates.PENDING) {
             x.then(function(value){
-                promise.fulfil(value);
+                promise.fulfill(value);
             }, function(reason){
                 promise.reject(reason);
             });
