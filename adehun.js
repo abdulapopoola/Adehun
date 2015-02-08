@@ -6,8 +6,7 @@ var validStates = {
     REJECTED: 2
 };
 
-var isValidState = function (state) {
-    
+var isValidState = function (state) {    
     return ((state === validStates.PENDING) ||
             (state === validStates.REJECTED) ||
             (state === validStates.FULFILLED));
@@ -26,6 +25,52 @@ var Utils = {
     isPromise: function (val) {
         return val && val.constructor === Promise;
     }
+};
+
+var transition = function (state, value) {
+    if (this.state === state || 
+            this.state !== validStates.PENDING ||
+            !isValidState(state) ||
+            arguments.length !== 2) {
+        return;
+    }
+
+    this.value = value;
+    this.state = state;
+    this.process();
+};
+
+var process = function () {
+    var that = this,
+        fulfillFallBack = function (value) {
+            return value;
+        },
+        rejectFallBack = function (value) {
+            throw value;
+        };    
+
+    Utils.runAsync(function () { 
+        while (that.queue.length) {
+            var queuedPromise = that.queue.shift(),
+                handler = null,
+                value;
+
+            if (that.state === validStates.FULFILLED) {
+                handler = queuedPromise.handlers.fulfill || fulfillFallBack;
+            } else if (that.state === validStates.REJECTED) {
+                handler = queuedPromise.handlers.reject || rejectFallBack;
+            }
+
+            try {
+                value = handler(that.value);
+            } catch (e) {
+                queuedPromise.transition(validStates.REJECTED, e);
+                continue;
+            }
+
+            Resolve(queuedPromise, value);
+        }
+    });
 };
 
 function Resolve(promise, x) {
@@ -87,59 +132,8 @@ var then = function (onFulfilled, onRejected) {
     }
 
     this.queue.push(queuedPromise);
-    this.process();
 
     return queuedPromise;
-};
-
-var process = function () {
-    var that = this,
-        fulfillFallBack = function (value) {
-            return value;
-        },
-        rejectFallBack = function (value) {
-            throw value;
-        };
-    
-    if (this.state === validStates.PENDING) {
-        return;
-    }
-
-    Utils.runAsync(function () { 
-        while (that.queue.length) {
-            var queuedPromise = that.queue.shift(),
-                handler = null,
-                value;
-
-            if (that.state === validStates.FULFILLED) {
-                handler = queuedPromise.handlers.fulfill || fulfillFallBack;
-            } else if (that.state === validStates.REJECTED) {
-                handler = queuedPromise.handlers.reject || rejectFallBack;
-            }
-
-            try {
-                value = handler(that.value);
-            } catch (e) {
-                queuedPromise.transition(validStates.REJECTED, e);
-                continue;
-            }
-
-            Resolve(queuedPromise, value);
-        }
-    });
-};
-
-var transition = function (state, value) {
-    if (this.state === state || 
-            this.state !== validStates.PENDING ||
-            !isValidState(state) ||
-            arguments.length !== 2) {
-        return;
-    }
-
-    this.value = value;
-    this.state = state;
-    this.process();
 };
 
 var fulfill = function (value) {
