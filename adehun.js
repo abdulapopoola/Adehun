@@ -1,3 +1,15 @@
+var validStates = {
+    PENDING:0,
+    FULFILLED:1,
+    REJECTED:2
+};
+
+var isValidState = function(state) {
+    return ((state === validStates.PENDING) || 
+            (state === validStates.REJECTED) ||
+            (state === validStates.FULFILLED));
+};
+
 var Utils = {
     runAsync: function(fn) {
         setTimeout(fn, 0);
@@ -14,7 +26,7 @@ var Utils = {
 };
 
 function Resolve(promise, x) {
-    if(promise === x){
+    if(promise === x) {
         promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
     } else if(Utils.isPromise(x)) {
         if(x.state === validStates.PENDING) {
@@ -60,12 +72,6 @@ function Resolve(promise, x) {
     }
 }
 
-var validStates = {
-    PENDING:0,
-    FULFILLED:1,
-    REJECTED:2
-};
-
 var then = function(onFulfilled, onRejected) {
     var queuedPromise = new Promise();
     if(Utils.isFunction(onFulfilled)){
@@ -82,12 +88,6 @@ var then = function(onFulfilled, onRejected) {
     return queuedPromise;
 };
 
-var isValidState = function(state) {
-    return ((state === validStates.PENDING) || 
-            (state === validStates.REJECTED) ||
-            (state === validStates.FULFILLED));
-};
-
 var process = function() {
     var that = this;
     if(this.state === validStates.PENDING){
@@ -100,9 +100,9 @@ var process = function() {
             var handler = null;
 
             if(that.state === validStates.FULFILLED) {
-                var handler = queuedPromise.handlers.fulfill || function (value) { return value; };
+                handler = queuedPromise.handlers.fulfill || function (value) { return value; };
             } else if (that.state === validStates.REJECTED) {
-                var handler = queuedPromise.handlers.reject || function (value) { throw value; };
+                handler = queuedPromise.handlers.reject || function (value) { throw value; };
             }
 
             try {
