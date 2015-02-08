@@ -1,58 +1,58 @@
+"use strict";
+
 var validStates = {
-    PENDING:0,
-    FULFILLED:1,
-    REJECTED:2
+    PENDING: 0,
+    FULFILLED: 1,
+    REJECTED: 2
 };
 
-var isValidState = function(state) {
-    return ((state === validStates.PENDING) || 
+var isValidState = function (state) {
+    
+    return ((state === validStates.PENDING) ||
             (state === validStates.REJECTED) ||
             (state === validStates.FULFILLED));
 };
 
 var Utils = {
-    runAsync: function(fn) {
+    runAsync: function (fn) {
         setTimeout(fn, 0);
     },
-    isFunction: function(val) {
+    isFunction: function (val) {
         return val && typeof val === "function";
     },
-    isObject: function(val) {
+    isObject: function (val) {
         return val && typeof val === "object";
     },
-    isPromise: function(val) {
+    isPromise: function (val) {
         return val && val.constructor === "Promise";
     }
 };
 
 function Resolve(promise, x) {
-    if(promise === x) {
+    if (promise === x) {
         promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
-    } else if(Utils.isPromise(x)) {
-        if(x.state === validStates.PENDING) {
-            x.then(function(value){
-                promise.fulfill(value);
-            }, function(reason){
-                promise.reject(reason);
-            });
+    } else if (Utils.isPromise(x)) {
+        if (x.state === validStates.PENDING) {
+            x.then(promise.fulfill, promise.reject);
         } else {
             promise.transition(x.state, x.value);
         }
     } else if (Utils.isObject(x) || Utils.isFunction(x)) {
-        var called = false;
+        var called = false,
+            thenHandler;
         try {
-            var thenHandler = x.then;        
-
-            if(Utils.isFunction(thenHandler)) {
+            thenHandler = x.then;
+            
+            if (Utils.isFunction(thenHandler)) {
                 thenHandler.call(x,
                         function (y) {
-                            if(!called) {
+                            if (!called) {
                                 Resolve(promise, y);
                                 called = true;
                             }
                         },
-                        function(r) {
-                            if(!called) {
+                        function (r) {
+                            if (!called) {
                                 promise.reject(r);
                                 called = true;
                             }
@@ -62,7 +62,7 @@ function Resolve(promise, x) {
                 called = true;
             }
         } catch (e) {
-            if(!called) {
+            if (!called) {
                 promise.reject(e);
                 called = true;
             }
@@ -72,13 +72,13 @@ function Resolve(promise, x) {
     }
 }
 
-var then = function(onFulfilled, onRejected) {
+var then = function (onFulfilled, onRejected) {
     var queuedPromise = new Promise();
-    if(Utils.isFunction(onFulfilled)){
+    if (Utils.isFunction(onFulfilled)) {
         queuedPromise.handlers.fulfill = onFulfilled;
     }
 
-    if(Utils.isFunction(onRejected)){
+    if (Utils.isFunction(onRejected)) {
         queuedPromise.handlers.reject = onRejected;
     }
 
@@ -88,25 +88,33 @@ var then = function(onFulfilled, onRejected) {
     return queuedPromise;
 };
 
-var process = function() {
-    var that = this;
-    if(this.state === validStates.PENDING){
+var process = function () {
+    var that = this,
+        fulfillFallBack = function (value) {
+            return value;
+        },
+        rejectFallBack = function (value) {
+            throw value;
+        };
+    
+    if (this.state === validStates.PENDING) {
         return;
     }
 
     Utils.runAsync(function () { 
-        while(that.queue.length) {
-            var queuedPromise = that.queue.shift();       
-            var handler = null;
+        while (that.queue.length) {
+            var queuedPromise = that.queue.shift(),
+                handler = null,
+                value;
 
-            if(that.state === validStates.FULFILLED) {
-                handler = queuedPromise.handlers.fulfill || function (value) { return value; };
+            if (that.state === validStates.FULFILLED) {
+                handler = queuedPromise.handlers.fulfill || fulfillFallBack;
             } else if (that.state === validStates.REJECTED) {
-                handler = queuedPromise.handlers.reject || function (value) { throw value; };
+                handler = queuedPromise.handlers.reject || rejectFallBack;
             }
 
             try {
-                var value = handler(that.value);
+                value = handler(that.value);
             } catch (e) {
                 queuedPromise.transition(validStates.REJECTED, e);
                 continue;
@@ -117,28 +125,28 @@ var process = function() {
     });
 };
 
-var transition = function(state, value) {
-    if(this.state === state ||
-       this.state !== validStates.PENDING ||
-       !isValidState(state) ||
-       arguments.length !== 2) {
-                return;
-            }
+var transition = function (state, value) {
+    if (this.state === state || 
+            this.state !== validStates.PENDING ||
+            !isValidState(state) ||
+            arguments.length !== 2) {
+        return;
+    }
 
     this.value = value;
     this.state = state;
     this.process();
 };
 
-var fulfill = function(value) {
+var fulfill = function (value) {
     this.transition(validStates.FULFILLED, value);
 };
 
-var reject = function(reason) {
+var reject = function (reason) {
     this.transition(validStates.REJECTED, reason);
 };
 
-var Promise = function(fn) {
+var Promise = function (fn) {
     var that = this;
 
     this.value = null;
@@ -149,11 +157,10 @@ var Promise = function(fn) {
         reject : null
     };
 
-    if(fn) {
-        fn(function(value) {
+    if (fn) {
+        fn(function (value) {
             Resolve(that, value);
-        },
-        function(reason) {
+        }, function (reason) {
             that.transition(validStates.REJECTED, reason);
         });
     }
@@ -180,12 +187,12 @@ module.exports = {
         var resolve, reject;
 
         return {
-            promise: new Promise(function(rslv, rjct){
+            promise: new Promise(function (rslv, rjct) {
                 resolve = rslv;
                 reject = rjct;
             }),
-                resolve: resolve,
-                reject: reject
+            resolve: resolve,
+            reject: reject
         };
     }
 };
