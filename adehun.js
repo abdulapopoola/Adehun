@@ -38,6 +38,7 @@ var then = function (onFulfilled, onRejected) {
     }
 
     this.queue.push(queuedPromise);
+    this.process();
 
     return queuedPromise;
 };
@@ -63,6 +64,10 @@ var process = function () {
         rejectFallBack = function (reason) {
             throw reason;
         };    
+        
+    if (this.state === ValidStates.PENDING) {
+        return;
+    }
 
     Utils.runAsync(function () { 
         while (that.queue.length) {
