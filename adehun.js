@@ -6,7 +6,7 @@ var validStates = {
     REJECTED: 2
 };
 
-var isValidState = function (state) {    
+var isValidState = function (state) {
     return ((state === validStates.PENDING) ||
             (state === validStates.REJECTED) ||
             (state === validStates.FULFILLED));
@@ -65,7 +65,7 @@ var process = function () {
             throw reason;
         };    
         
-    if (this.state === ValidStates.PENDING) {
+    if (this.state === validStates.PENDING) {
         return;
     }
 
