@@ -10,3 +10,5 @@ Adehun is an implementation of the Promise/A+ spec. The word 'adehun' means prom
 
 
 It is an extremely lightweight implementation (about 166 LOC) and very useful for learning how to implement the Promise/A+ spec.
+
+You can read the blog post on Adehun here: 
