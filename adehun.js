@@ -138,7 +138,7 @@ function Resolve(promise, x) {
         }
     } else {
         promise.fulfill(x);
-    }
+    }   
 }
 
 var fulfill = function (value) {
