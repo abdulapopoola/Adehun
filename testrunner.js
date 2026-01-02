@@ -1,9 +1,7 @@
-var adapter = require('./adehun.js');
-var testRunner = require('promises-aplus-tests');
+const promisesAplusTests = require("promises-aplus-tests");
+const Adehun = require("./adehun.js");
 
-var promisesAplusTests = require("promises-aplus-tests");
-
-promisesAplusTests(adapter, function (err) {
-        // All done; output is in the console. Or check `err` for number of failures.
-        console.log(err);
+promisesAplusTests(Adehun, function (err) {
+    // All done; output is in the console. Or check `err` for number of failures.
+    console.log(err);
 });

@@ -118,6 +118,31 @@ class Adehun {
     reject(reason) {
         this.transition(validStates.REJECTED, reason);
     }
+
+    static resolved(value) {
+        return new Adehun(resolve => {
+            resolve(value);
+        });
+    }
+
+    static rejected(reason) {
+        return new Adehun((resolve, reject) => {
+            reject(reason);
+        });
+    }
+
+    static deferred() {
+        let resolve, reject;
+        const promise = new Adehun((rslv, rjct) => {
+            resolve = rslv;
+            reject = rjct;
+        });
+        return {
+            promise: promise,
+            resolve: resolve,
+            reject: reject
+        };
+    }
 }
 
 function Resolve(promise, x) {
@@ -168,27 +193,4 @@ function Resolve(promise, x) {
     }
 }
 
-module.exports = {
-    resolved: (value) => {
-        return new Adehun(resolve => {
-            resolve(value);
-        });
-    },
-    rejected: (reason) => {
-        return new Adehun((resolve, reject) => {
-            reject(reason);
-        });
-    },
-    deferred: () => {
-        let resolve, reject;
-
-        return {
-            promise: new Adehun((rslv, rjct) => {
-                resolve = rslv;
-                reject = rjct;
-            }),
-            resolve: resolve,
-            reject: reject
-        };
-    }
-};
+module.exports = Adehun;
