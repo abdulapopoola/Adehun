@@ -1,131 +1,158 @@
 "use strict";
 
-var validStates = {
+const validStates = {
     PENDING: 0,
     FULFILLED: 1,
     REJECTED: 2
 };
 
-var isValidState = function (state) {
+const isValidState = (state) => {
     return ((state === validStates.PENDING) ||
             (state === validStates.REJECTED) ||
             (state === validStates.FULFILLED));
 };
 
-var Utils = {
-    runAsync: function (fn) {
+const Utils = {
+    runAsync: (fn) => {
         setTimeout(fn, 0);
     },
-    isFunction: function (val) {
+    isFunction: (val) => {
         return val && typeof val === "function";
     },
-    isObject: function (val) {
+    isObject: (val) => {
         return val && typeof val === "object";
     },
-    isPromise: function (val) {
-        return val && val.constructor === Adehun;
+    isPromise: (val) => {
+        return val && val instanceof Adehun;
     }
 };
 
-var then = function (onFulfilled, onRejected) {
-    var queuedPromise = new Adehun();
-    if (Utils.isFunction(onFulfilled)) {
-        queuedPromise.handlers.fulfill = onFulfilled;
+class Adehun {
+    constructor(fn) {
+        this.value = null;
+        this.state = validStates.PENDING;
+        this.queue = [];
+        this.handlers = {
+            fulfill: null,
+            reject: null
+        };
+
+        if (fn) {
+            fn(value => {
+                Resolve(this, value);
+            }, reason => {
+                this.reject(reason);
+            });
+        }
     }
 
-    if (Utils.isFunction(onRejected)) {
-        queuedPromise.handlers.reject = onRejected;
+    then(onFulfilled, onRejected) {
+        const queuedPromise = new Adehun();
+        if (Utils.isFunction(onFulfilled)) {
+            queuedPromise.handlers.fulfill = onFulfilled;
+        }
+
+        if (Utils.isFunction(onRejected)) {
+            queuedPromise.handlers.reject = onRejected;
+        }
+
+        this.queue.push(queuedPromise);
+        this.process();
+
+        return queuedPromise;
     }
 
-    this.queue.push(queuedPromise);
-    this.process();
-
-    return queuedPromise;
-};
-
-var transition = function (state, value) {
-    if (this.state === state || 
+    transition(state, value) {
+        if (this.state === state ||
             this.state !== validStates.PENDING ||
             !isValidState(state) ||
             arguments.length !== 2) {
-        return;
-    }
-
-    this.value = value;
-    this.state = state;
-    this.process();
-};
-
-var process = function () {
-    var that = this,
-        fulfillFallBack = function (value) {
-            return value;
-        },
-        rejectFallBack = function (reason) {
-            throw reason;
-        };    
-        
-    if (this.state === validStates.PENDING) {
-        return;
-    }
-
-    Utils.runAsync(function () { 
-        while (that.queue.length) {
-            var queuedPromise = that.queue.shift(),
-                handler = null,
-                value;
-
-            if (that.state === validStates.FULFILLED) {
-                handler = queuedPromise.handlers.fulfill || fulfillFallBack;
-            } else if (that.state === validStates.REJECTED) {
-                handler = queuedPromise.handlers.reject || rejectFallBack;
-            }
-
-            try {
-                value = handler(that.value);
-            } catch (e) {
-                queuedPromise.transition(validStates.REJECTED, e);
-                continue;
-            }
-
-            Resolve(queuedPromise, value);
+            return;
         }
-    });
-};
+
+        this.value = value;
+        this.state = state;
+        this.process();
+    }
+
+    process() {
+        const fulfillFallBack = (value) => {
+            return value;
+        };
+        const rejectFallBack = (reason) => {
+            throw reason;
+        };
+
+        if (this.state === validStates.PENDING) {
+            return;
+        }
+
+        Utils.runAsync(() => {
+            while (this.queue.length) {
+                let queuedPromise = this.queue.shift(),
+                    handler = null,
+                    value;
+
+                if (this.state === validStates.FULFILLED) {
+                    handler = queuedPromise.handlers.fulfill || fulfillFallBack;
+                } else if (this.state === validStates.REJECTED) {
+                    handler = queuedPromise.handlers.reject || rejectFallBack;
+                }
+
+                try {
+                    value = handler(this.value);
+                } catch (e) {
+                    queuedPromise.transition(validStates.REJECTED, e);
+                    continue;
+                }
+
+                Resolve(queuedPromise, value);
+            }
+        });
+    }
+
+    fulfill(value) {
+        this.transition(validStates.FULFILLED, value);
+    }
+
+    reject(reason) {
+        this.transition(validStates.REJECTED, reason);
+    }
+}
 
 function Resolve(promise, x) {
     if (promise === x) {
         promise.transition(validStates.REJECTED, new TypeError("The promise and its value refer to the same object"));
     } else if (Utils.isPromise(x)) {
         if (x.state === validStates.PENDING) {
-            x.then(function (val) {
+            x.then(val => {
                 Resolve(promise, val);
-            }, function (reason) {
+            }, reason => {
                 promise.transition(validStates.REJECTED, reason);
             });
         } else {
             promise.transition(x.state, x.value);
         }
     } else if (Utils.isObject(x) || Utils.isFunction(x)) {
-        var called = false,
+        let called = false,
             thenHandler;
         try {
             thenHandler = x.then;
-            
+
             if (Utils.isFunction(thenHandler)) {
                 thenHandler.call(x,
-                        function (y) {
-                            if (!called) {
-                                Resolve(promise, y);
-                                called = true;
-                            }
-                        },
-                        function (r) {
-                            if (!called) {
-                                promise.reject(r);
-                                called = true;
-                            }
-                        });
+                    y => {
+                        if (!called) {
+                            Resolve(promise, y);
+                            called = true;
+                        }
+                    },
+                    r => {
+                        if (!called) {
+                            promise.reject(r);
+                            called = true;
+                        }
+                    });
             } else {
                 promise.fulfill(x);
                 called = true;
@@ -138,59 +165,25 @@ function Resolve(promise, x) {
         }
     } else {
         promise.fulfill(x);
-    }   
+    }
 }
 
-var fulfill = function (value) {
-    this.transition(validStates.FULFILLED, value);
-};
-
-var reject = function (reason) {
-    this.transition(validStates.REJECTED, reason);
-};
-
-var Adehun = function (fn) {
-    var that = this;
-
-    this.value = null;
-    this.state = validStates.PENDING;
-    this.queue = [];
-    this.handlers = {
-        fulfill : null,
-        reject : null
-    };
-
-    if (fn) {
-        fn(function (value) {
-            Resolve(that, value);
-        }, function (reason) {
-            that.reject(reason);
-        });
-    }
-};
-
-Adehun.prototype.transition = transition;
-Adehun.prototype.process = process;
-Adehun.prototype.then = then;
-Adehun.prototype.fulfill = fulfill;
-Adehun.prototype.reject = reject;
-
 module.exports = {
-    resolved: function (value) {
-        return new Adehun(function (resolve) {
+    resolved: (value) => {
+        return new Adehun(resolve => {
             resolve(value);
         });
     },
-    rejected: function (reason) {
-        return new Adehun(function (resolve, reject) {
+    rejected: (reason) => {
+        return new Adehun((resolve, reject) => {
             reject(reason);
         });
     },
-    deferred: function () {
-        var resolve, reject;
+    deferred: () => {
+        let resolve, reject;
 
         return {
-            promise: new Adehun(function (rslv, rjct) {
+            promise: new Adehun((rslv, rjct) => {
                 resolve = rslv;
                 reject = rjct;
             }),

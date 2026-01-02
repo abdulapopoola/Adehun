@@ -20,10 +20,12 @@
   "author": "AbdulFattah Popoola <abdulapopoola@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-      "promises-aplus-tests": "~2"
+    "promises-aplus-tests": "^2.1.2"
   },
-  "contributors": [{
+  "contributors": [
+    {
       "name": "AbdulFattah Popoola",
       "web": "http://abdulapopoola.com"
-  }]
+    }
+  ]
 }
