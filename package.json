@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "Adehun is an extremely lightweight Promise/A+ implementation (about 166 LOC) and very useful for learning how to implement the Promise/A+ spec.",
   "main": "adehun.js",
+  "type": "module",
   "scripts": {
-    "test": "node testrunner.js"
+    "test": "node testrunner.js",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -20,6 +23,12 @@
   "author": "AbdulFattah Popoola <abdulapopoola@outlook.com>",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^17.0.0",
+    "prettier": "^3.7.4",
     "promises-aplus-tests": "^2.1.2"
   },
   "contributors": [
