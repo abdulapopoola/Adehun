@@ -1,18 +1,18 @@
 "use strict";
 
-var validStates = {
+const validStates = {
     PENDING: 0,
     FULFILLED: 1,
     REJECTED: 2
 };
 
-var isValidState = function (state) {
+const isValidState = function (state) {
     return ((state === validStates.PENDING) ||
             (state === validStates.REJECTED) ||
             (state === validStates.FULFILLED));
 };
 
-var Utils = {
+const Utils = {
     runAsync: function (fn) {
         setTimeout(fn, 0);
     },
@@ -27,8 +27,8 @@ var Utils = {
     }
 };
 
-var then = function (onFulfilled, onRejected) {
-    var queuedPromise = new Adehun();
+const then = function (onFulfilled, onRejected) {
+    const queuedPromise = new Adehun();
     if (Utils.isFunction(onFulfilled)) {
         queuedPromise.handlers.fulfill = onFulfilled;
     }
@@ -43,7 +43,7 @@ var then = function (onFulfilled, onRejected) {
     return queuedPromise;
 };
 
-var transition = function (state, value) {
+const transition = function (state, value) {
     if (this.state === state || 
             this.state !== validStates.PENDING ||
             !isValidState(state) ||
@@ -56,14 +56,14 @@ var transition = function (state, value) {
     this.process();
 };
 
-var process = function () {
-    var that = this,
-        fulfillFallBack = function (value) {
-            return value;
-        },
-        rejectFallBack = function (reason) {
-            throw reason;
-        };    
+const process = function () {
+    const that = this;
+    const fulfillFallBack = function (value) {
+        return value;
+    };
+    const rejectFallBack = function (reason) {
+        throw reason;
+    };    
         
     if (this.state === validStates.PENDING) {
         return;
@@ -71,7 +71,7 @@ var process = function () {
 
     Utils.runAsync(function () { 
         while (that.queue.length) {
-            var queuedPromise = that.queue.shift(),
+            let queuedPromise = that.queue.shift(),
                 handler = null,
                 value;
 
@@ -107,7 +107,7 @@ function Resolve(promise, x) {
             promise.transition(x.state, x.value);
         }
     } else if (Utils.isObject(x) || Utils.isFunction(x)) {
-        var called = false,
+        let called = false,
             thenHandler;
         try {
             thenHandler = x.then;
@@ -141,16 +141,16 @@ function Resolve(promise, x) {
     }   
 }
 
-var fulfill = function (value) {
+const fulfill = function (value) {
     this.transition(validStates.FULFILLED, value);
 };
 
-var reject = function (reason) {
+const reject = function (reason) {
     this.transition(validStates.REJECTED, reason);
 };
 
-var Adehun = function (fn) {
-    var that = this;
+let Adehun = function (fn) {
+    const that = this;
 
     this.value = null;
     this.state = validStates.PENDING;
@@ -187,7 +187,7 @@ module.exports = {
         });
     },
     deferred: function () {
-        var resolve, reject;
+        let resolve, reject;
 
         return {
             promise: new Adehun(function (rslv, rjct) {
